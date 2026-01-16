@@ -16,7 +16,6 @@ fn main() {
         DefaultPlugins,
     ))
     .add_plugins(location::LocationPlugin)
-    .add_plugins(MeshPickingPlugin)
     .add_systems(Startup, init)
     .run()
     ;
@@ -39,5 +38,16 @@ fn init (
         },
         Transform::IDENTITY.looking_at(Vec3::ZERO, Vec3::Y)
     ));
+    cmd.spawn((
+        Node {
+            padding: UiRect::all(Val::Px(10.)),
+            ..default()  
+        },
+        children![
+            Text::new("Press Space for next model")
+        ]
+        
+    ));
+
 }
 

@@ -1,6 +1,6 @@
 use bevy::{
-    prelude::*,
-    color::palettes::css
+    input::common_conditions::input_just_pressed, prelude::*
+    // color::palettes::css
 };
 
 use crate::LocationState;
@@ -15,6 +15,7 @@ impl Plugin for LocationPlugin {
         .add_systems(OnEnter(LocationState::Moving), moving)
         .add_systems(OnEnter(Location), enter)
         .add_systems(Update, loaded.run_if(on_message::<AssetEvent<Scene>>))
+        .add_systems(Update, next_loc.run_if(input_just_pressed(KeyCode::Space)))
         ;
     }
 }
@@ -36,24 +37,17 @@ impl ComputedStates for Location {
 #[derive(Resource, Default)]
 pub struct LocationHandles([Option<Handle<Scene>>; 4]);
 
-#[derive(Component)]
-struct LocationIdx(usize);
-
 #[derive(Resource, Default)]
 struct LocationNextIdx(usize);
 
 // ---
 
-fn exit(
-    tr: On<Pointer<Click>>,
-    mut next: ResMut<NextState<LocationState>>,
+fn next_loc (
     mut next_index: ResMut<LocationNextIdx>,
-    portal_q: Query<&LocationIdx>
+    mut next: ResMut<NextState<LocationState>>,
 ) {
-    if let Ok(LocationIdx(loc_idx)) = portal_q.get(tr.entity)  {
-        next_index.0 = *loc_idx;
-        next.set(LocationState::Moving);
-    }
+    next_index.0 = (next_index.0 + 1) % 4 ;
+    next.set(LocationState::Moving);
 }
 
 // ---
@@ -70,8 +64,6 @@ fn moving(
 fn enter(
     mut cmd: Commands,
     assets: ResMut<AssetServer>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    mut meshes: ResMut<Assets<Mesh>>,
     location: Res<State<LocationState>>,
     mut room_handles: ResMut<LocationHandles>
 
@@ -85,28 +77,6 @@ fn enter(
     } else {
         let sh = assets.load(GltfAssetLabel::Scene(0).from_asset(format!("models/locations/location-{}.glb", loc_index + 1)));
         room_handles.0[loc_index] = Some(sh.clone());
-    }
-
-
-    let mesh = meshes.add(Cuboid::from_size(vec3(1., 0.1, 1.)));
-    let mat = materials.add(Color::from(css::ALICE_BLUE));
-
-
-    let exits = vec![
-        (if loc_index == 0 {3} else {loc_index - 1}, 0. ),
-        ((loc_index + 1) % 4 , 2.)
-    ];
-
-    for e in exits {
-        cmd.spawn((
-            Mesh3d(mesh.clone()),
-            MeshMaterial3d(mat.clone()),
-            DespawnOnExit(Location),
-            LocationIdx(e.0),
-            Transform::from_xyz(e.1, 0., 0.)
-        ))
-        .observe(exit)
-        ;
     }
 }
 
